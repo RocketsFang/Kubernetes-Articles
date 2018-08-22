@@ -68,10 +68,10 @@ nginx
 ```
 docker run -d --name ghost --net=container:pause --ipc=container:pause  --pid=container:pause ghost
 ```
-在这两个例子中我们都指定了Pause容器作为我们想要加入的目标命名空间容器。 这样我们就能很快创建一个Pod。 如果你访问http://localhost:8080你就应该能看到
+在这两个例子中我们都指定了Pause容器作为我们想要加入的目标命名空间容器。 这样我们就能很快创建一个Pod。 如果你访问 http://localhost:8080 你就应该能看到
 nginx作为代理的ghost博客页面，因为网络命名空间是在Pause，nginx，ghost容器之间共享的。
 
-
+![这个图说明了一切](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/pause_container.png)
 
 
 
