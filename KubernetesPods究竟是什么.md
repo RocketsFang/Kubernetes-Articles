@@ -76,8 +76,15 @@ docker run -d --name ghost --net=container:nginx --ipc=container:nginx --pid=con
 ![喜欢这个设计](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/kubernetes.png)
 
 ## API形式的容器Pods化
-将多个container组合到Pod里面的可能使得我们可以从本质上创建其他Pods可以以API方式消费的容器到一个Pod中。
+将多个container组合到Pod里面的可能使得我们可以基本上创建其他Pods可以以API方式消费的容器到一个Pod中。这里的API并不能理解为普通的Web API，更是一个抽象可以被其他Pod使用的抽象。
 
+比如，在我们的nginx+confd例子中confg根本不知道nginx进程的任何情况。 他所知道的就是他的监空在etcd上面的value然后发送HUP信号量给nginx进程或者运行一个命令。 具体的应用程序不一定必须是nginx，它可以是任何的应用程序。 这样的话，你就可以用confg的镜像然后配置到各种pod中去。 Pod就会去在摩托车上调用我们称之为边车。
+
+你也可以思考你可能会用到的其他的抽象。 像istio那样的服务网格就可以当作边车装置来扣到我们的Pod上来为我们提供服务了路由，遥测和策略加强而不需要去修改我们的主程序。
+
+你也可以去使用多个’边车‘。 比如一起同时使用confg边车和istio边车。 应用程序就可以这样去组合来创造出更加复杂稳定的系统，但是还会保持各自程序相对的简单。
+
+希望这篇文章可以给你一些启示，对你将来为什么用Pod以及怎么用Pod去部署你的容器有帮助。
 
 
 
