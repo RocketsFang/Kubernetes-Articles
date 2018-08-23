@@ -32,6 +32,64 @@ I/O等等。 CPU可以用milli-cores来限制， RAM可以用字节来限制。 
 当你用Docker运行一个普通的容器， Docker会为每一个容器创建命名空间和cgroup，这些设置就一个一个被映射。 这就是开发者思考容器的方式。
 ![开发者眼中的容器](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/containers.png)
 
+容器可以说是个重要的独立的导弹发射仓，但也有些例外就是他也需要数据卷和端口映射到物理主机以使它能够和外界交流。
+
+然而，使用一些额外的命令行参数，你就能够将多个容器放入到一个命名空间当中去。我们下创建一个单独的nginx容器
+```
+cat <<EOF >> nginx.conf
+error_log stderr;
+events { worker_connections 1024;}
+http{
+  access_log /dev/stdout combined
+  server{
+  listen 80 default_server;
+  server_name example.com ww.example.com
+  location / {
+  proxy_pass http://127.0.0.1:2368;
+  }
+}
+EOF
+docker run -d --name nginx -v `pwd`/nginx.conf:/etc/nginx/nginx.conf -p 8080:80 nginx
+```
+接下来我们在这个容器里面运行一个ghost的容器。 这次我们需要一些额外的参数来是他加入到nginx容器命名空间当中去。
+```
+docker run -d --name ghost --net=container:nginx --ipc=container:nginx --pid=container:nginx ghost
+```
+这样我们的nginx容器就能在localhost上代理请求到我们的ghost容器。 如果你访问 http://localhost:8080/ 你应当能够通过nginx代理看到ghost。 这些命令在一套命名空间中创建了一系列的容器。 这些命名空间可以让Docker容器彼此之间相互发现和通信。
+![组合中的组合](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/ghost_.png)
+
+## Pods就是多个容器（可以这么说）
+现在我们看到了我们可以用多个进程来组合命名空间和cgroups， 我们能够清楚的知道Kubernetes Pods到底是个啥了。 Pods允许你指定你想要运行的容器，而Kubernetes帮我们用正确的方式自动设置好了命名空间和cgroups。 实际的实现会比我们的这个例子更加的复杂，比如Kubernetes没有使用Docker的网络而是使用了[CNI](https://github.com/containernetworking/cni)，但这并不妨碍我们理解概念。
+
+当我们以这种方式创建了我们的容器组，每一个进程就感觉好像他们是运行在同一个机器当中一样。 他们可以彼此以localhost的方式通信， 他们可以使用同一个数据卷。他们甚至可以使用IPC或者彼此之间发送诸如HUP或者TERM信号。
+
+我们在设想一下假设我们要运行nginx和confg，并且要利用confg去更新nginx的配置，然后不管什么时候当我添加或者删除应用程序服务器是都要重启nginx。 可以在假设我们还有一个保存了我们后端服务器IP地址的etcd服务器。一旦那个IP地址列表发生了改变confg就会收到一个提醒，confg就写一个新的nginx配置文件并发送一个HUP信号给nginx这样nginx就会去重新加载这个新的配置文件。
+
+![干点儿实际的事儿](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/nginx.png)
+
+我们需要这样去做用Docker方式的话，我们需要把nginx和confg应用程序放到一个单独的容器中。 由于Docker只有一个entrypoint，而我们需要运行一个监控进程来管理这两个进程。这样去做似乎不是太理想因为我们的需要给每一个要运行的nginx额外再运行一个监控程序。 更重要的是由于这个监控进程是entrypointDocker只知道这个进程的存在，并不能够感知其他进程的存在就是说你的应用程序或者其他的工具不可能通过Docker API操作这些进程。 Nginx服务器可能都已经崩溃了，可是Docker根本对此一无知晓。
+
+![糟糕的设计](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/supervisord.png)
+
+使用Kubernetes的Pods来管理每一个进程进而识别他的状态。 这样一来就可以通过API来得到进程的状态信息并且还能提供诸如当他崩溃后重新启动自动化的日志服务。
+
+![喜欢这个设计](https://github.com/RocketsFang/Kubernetes-Articles/blob/master/images/kubernetes.png)
+
+## API形式的容器Pods化
+将多个container组合到Pod里面的可能使得我们可以从本质上创建其他Pods可以以API方式消费的容器到一个Pod中。
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
